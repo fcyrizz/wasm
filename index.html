@@ -10,7 +10,7 @@
   </style>
 </head>
 <body>
-  <h2>Convert Video to MP3 (ffmpeg.wasm)</h2>
+  <h2>V11 Convert Video to MP3 (ffmpeg.wasm)</h2>
   <input type="file" id="uploader" accept="video/*" />
   <br><br>
   <button id="convertBtn">Convert to MP3</button>
@@ -18,12 +18,12 @@
 
   <div id="log"></div>
 
-  <!-- load UMD build (no import/export) -->
+  <!-- ffmpeg.wasm UMD build -->
   <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
   <script>
-    const { createFFmpeg, fetchFile } = FFmpeg;  // global exposed
-
+    const { createFFmpeg, fetchFile } = FFmpeg;
     const ffmpeg = createFFmpeg({ log: true });
+
     const logElem = document.getElementById("log");
     const uploader = document.getElementById("uploader");
     const convertBtn = document.getElementById("convertBtn");
@@ -38,18 +38,19 @@
       log(`[${type}] ${message}`);
     });
 
+    // 🔥 preload ffmpeg wasm as soon as page is ready
+    window.addEventListener("load", async () => {
+      log("Preloading ffmpeg-core (~32MB)...");
+      await ffmpeg.load();
+      log("✅ ffmpeg-core loaded and ready.");
+    });
+
     convertBtn.onclick = async () => {
       if (!uploader.files.length) {
         alert("Select a video file first");
         return;
       }
       const file = uploader.files[0];
-
-      if (!ffmpeg.isLoaded()) {
-        log("Loading ffmpeg-core (~32MB)...");
-        await ffmpeg.load();
-        log("ffmpeg loaded");
-      }
 
       log("Writing file to FS: " + file.name);
       ffmpeg.FS("writeFile", "input.mp4", await fetchFile(file));
@@ -63,7 +64,7 @@
       const url = URL.createObjectURL(new Blob([data.buffer], { type: "audio/mpeg" }));
       downloadLink.href = url;
       downloadLink.style.display = "inline-block";
-      log("✅ Done. Click Download.");
+      log("🎉 Done. Click Download.");
     };
   </script>
 </body>
