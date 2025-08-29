@@ -3,6 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <title>Video to MP3 Converter</title>
+  <style>
+    #logs {
+      white-space: pre-wrap;
+      background: #111;
+      color: #0f0;
+      padding: 10px;
+      height: 200px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 13px;
+    }
+  </style>
 </head>
 <body>
   <h2>Convert Video to MP3</h2>
@@ -12,15 +24,22 @@
   <p id="status">Status: Idle</p>
   <a id="downloadLink" style="display:none;" download="output.mp3">Download MP3</a>
 
+  <h3>Logs:</h3>
+  <div id="logs"></div>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg.min.js"></script>
   <script>
     const { FFmpeg } = FFmpegWASM;
+    const logsEl = document.getElementById("logs");
 
-    // ✅ Tell ffmpeg where to fetch wasm/worker from
     const ffmpeg = new FFmpeg({
       coreURL: "https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg-core.js",
       wasmURL: "https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg-core.wasm",
       workerURL: "https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg-core.worker.js",
+      logger: ({ type, message }) => {
+        logsEl.textContent += `[${type}] ${message}\n`;
+        logsEl.scrollTop = logsEl.scrollHeight;
+      }
     });
 
     const uploader = document.getElementById("uploader");
@@ -49,7 +68,14 @@
       await ffmpeg.writeFile(inputName, new Uint8Array(await file.arrayBuffer()));
 
       statusEl.innerText = "Status: Converting...";
-      await ffmpeg.exec(["-i", inputName, "-vn", "-ar", "44100", "-ac", "2", "-b:a", "192k", outputName]);
+      await ffmpeg.exec([
+        "-i", inputName,
+        "-vn",                // no video
+        "-ar", "44100",       // sample rate
+        "-ac", "2",           // stereo
+        "-b:a", "192k",       // bitrate
+        outputName
+      ]);
 
       statusEl.innerText = "Status: Fetching output...";
       const data = await ffmpeg.readFile(outputName);
