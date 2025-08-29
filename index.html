@@ -2,92 +2,77 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Video to MP3 Converter</title>
+  <title>MP3 Converter (ffmpeg.wasm)</title>
   <style>
-    #logs {
-      white-space: pre-wrap;
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    #log {
       background: #111;
       color: #0f0;
       padding: 10px;
       height: 200px;
       overflow-y: auto;
       font-family: monospace;
-      font-size: 13px;
+      margin-top: 10px;
+    }
+    button {
+      margin-top: 10px;
+      padding: 10px 15px;
     }
   </style>
 </head>
 <body>
-  <h2>Convert Video to MP3</h2>
+  <h2>Convert MP3 (ffmpeg.wasm)</h2>
+  <input type="file" id="uploader" accept="audio/mp3" />
+  <br><br>
+  <button id="convertBtn">Convert to MP3</button>
+  <a id="downloadLink" style="display:none;" download="output.mp3">Download Converted MP3</a>
 
-  <input type="file" id="uploader" accept="video/*">
-  <button id="convertBtn">Convert</button>
-  <p id="status">Status: Idle</p>
-  <a id="downloadLink" style="display:none;" download="output.mp3">Download MP3</a>
+  <div id="log"></div>
 
-  <h3>Logs:</h3>
-  <div id="logs"></div>
+  <script type="module">
+    import { createFFmpeg, fetchFile } from "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/+esm";
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg.min.js"></script>
-  <script>
-    const { FFmpeg } = FFmpegWASM;
-    const logsEl = document.getElementById("logs");
-
-    const ffmpeg = new FFmpeg({
-      coreURL: "https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg-core.js",
-      wasmURL: "https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg-core.wasm",
-      workerURL: "https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg-core.worker.js",
-    });
-
-    // ✅ Attach logger AFTER creating ffmpeg
-    ffmpeg.on("log", ({ type, message }) => {
-      logsEl.textContent += `[${type}] ${message}\n`;
-      logsEl.scrollTop = logsEl.scrollHeight;
-    });
-
+    const ffmpeg = createFFmpeg({ log: true });
+    const logElem = document.getElementById("log");
     const uploader = document.getElementById("uploader");
     const convertBtn = document.getElementById("convertBtn");
-    const statusEl = document.getElementById("status");
     const downloadLink = document.getElementById("downloadLink");
 
-    async function loadFFmpeg() {
-      statusEl.innerText = "Status: Loading ffmpeg...";
-      await ffmpeg.load();
-      statusEl.innerText = "Status: Ready";
+    function log(msg) {
+      logElem.textContent += msg + "\n";
+      logElem.scrollTop = logElem.scrollHeight;
     }
-    loadFFmpeg();
 
     convertBtn.onclick = async () => {
       if (!uploader.files.length) {
-        alert("Please select a video first");
+        alert("Select an MP3 file first");
         return;
       }
-
       const file = uploader.files[0];
-      const inputName = file.name;
-      const outputName = "output.mp3";
 
-      statusEl.innerText = "Status: Writing file...";
-      await ffmpeg.writeFile(inputName, new Uint8Array(await file.arrayBuffer()));
+      if (!ffmpeg.isLoaded()) {
+        log("Loading ffmpeg-core (~32MB)...");
+        await ffmpeg.load();
+        log("ffmpeg loaded");
+      }
 
-      statusEl.innerText = "Status: Converting...";
-      await ffmpeg.exec([
-        "-i", inputName,
-        "-vn",
-        "-ar", "44100",
-        "-ac", "2",
-        "-b:a", "192k",
-        outputName
-      ]);
+      log("Writing file to FS: " + file.name);
+      ffmpeg.FS("writeFile", "input.mp3", await fetchFile(file));
 
-      statusEl.innerText = "Status: Fetching output...";
-      const data = await ffmpeg.readFile(outputName);
+      log("Running conversion...");
+      // this re-encodes MP3 to MP3
+      await ffmpeg.run("-i", "input.mp3", "-codec:a", "libmp3lame", "output.mp3");
 
-      const blob = new Blob([data.buffer], { type: "audio/mpeg" });
-      const url = URL.createObjectURL(blob);
+      log("Reading result...");
+      const data = ffmpeg.FS("readFile", "output.mp3");
 
+      const url = URL.createObjectURL(new Blob([data.buffer], { type: "audio/mpeg" }));
       downloadLink.href = url;
       downloadLink.style.display = "inline-block";
-      statusEl.innerText = "Status: Done ✅";
+      log("Conversion done. Click Download.");
     };
   </script>
 </body>
