@@ -10,7 +10,7 @@
   </style>
 </head>
 <body>
-  <h2>V9 Convert Video to MP3 (ffmpeg.wasm)</h2>
+  <h2>Convert Video to MP3 (ffmpeg.wasm)</h2>
   <input type="file" id="uploader" accept="video/*" />
   <br><br>
   <button id="convertBtn">Convert to MP3</button>
@@ -18,9 +18,10 @@
 
   <div id="log"></div>
 
-  <script type="module">
-    import { createFFmpeg, fetchFile } 
-      from "https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js";
+  <!-- load UMD build (no import/export) -->
+  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+  <script>
+    const { createFFmpeg, fetchFile } = FFmpeg;  // global exposed
 
     const ffmpeg = createFFmpeg({ log: true });
     const logElem = document.getElementById("log");
@@ -33,7 +34,6 @@
       logElem.scrollTop = logElem.scrollHeight;
     }
 
-    // attach logger for real-time progress
     ffmpeg.setLogger(({ type, message }) => {
       log(`[${type}] ${message}`);
     });
