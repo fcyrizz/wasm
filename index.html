@@ -1,422 +1,71 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Video → MP3 (ffmpeg.wasm) — Beautiful UI</title>
-<style>
-  :root{
-    --bg:#0f1724;
-    --card:#0b1220;
-    --accent:#06b6d4;
-    --muted:#9aa6b2;
-    --success:#10b981;
-    --danger:#ef4444;
-    --glass: rgba(255,255,255,0.03);
-    --radius:12px;
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0;
-    font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-    background: linear-gradient(180deg,#021026 0%, #071225 60%);
-    color:#e6eef3;
-    -webkit-font-smoothing:antialiased;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:20px;
-    min-height:100vh;
-  }
-
-  .container{
-    width:100%;
-    max-width:880px;
-    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-    border-radius:var(--radius);
-    padding:22px;
-    box-shadow: 0 8px 30px rgba(2,6,23,0.6);
-    display:grid;
-    grid-template-columns: 1fr 340px;
-    gap:20px;
-  }
-
-  /* responsive stack */
-  @media (max-width:880px){
-    .container{grid-template-columns:1fr;padding:18px}
-  }
-
-  .left{
-    display:flex;
-    flex-direction:column;
-    gap:14px;
-  }
-
-  h1{
-    margin:0;
-    font-size:20px;
-    letter-spacing:0.2px;
-  }
-  p.lead{margin:0;color:var(--muted);font-size:13px}
-
-  .drop {
-    margin-top:10px;
-    border-radius:12px;
-    border: 1px dashed rgba(255,255,255,0.06);
-    background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));
-    padding:18px;
-    display:flex;
-    gap:12px;
-    align-items:center;
-    transition: all .18s ease;
-  }
-  .drop.dragover{ box-shadow: 0 6px 22px rgba(6,182,212,0.06); transform:translateY(-2px); border-color: rgba(6,182,212,0.25); }
-
-  .drop input[type="file"]{display:none}
-
-  .file-meta{
-    display:flex;
-    flex-direction:column;
-    gap:6px;
-    min-width:0;
-  }
-
-  .file-name{font-weight:600; font-size:15px; color:#e8f6fb; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-  .file-sub{font-size:13px;color:var(--muted)}
-
-  .controls{
-    display:flex;
-    gap:10px;
-    align-items:center;
-    margin-top:10px;
-  }
-
-  button.primary{
-    background:linear-gradient(90deg,var(--accent), #14b8a6);
-    color:#022b30;
-    border:0;
-    padding:10px 14px;
-    border-radius:10px;
-    font-weight:600;
-    cursor:pointer;
-    box-shadow: 0 6px 18px rgba(6,182,212,0.12);
-  }
-  button.ghost{
-    background:transparent;
-    color:var(--muted);
-    border:1px solid rgba(255,255,255,0.04);
-    padding:9px 12px;
-    border-radius:10px;
-    cursor:pointer;
-  }
-  button[disabled]{ opacity:0.5; cursor:not-allowed; transform:none; box-shadow:none }
-
-  /* right card */
-  .right{
-    background:var(--card);
-    border-radius:10px;
-    padding:16px;
-    display:flex;
-    flex-direction:column;
-    gap:12px;
-    align-items:stretch;
-    justify-content:flex-start;
-  }
-  .status{
-    display:flex;
-    gap:12px;
-    align-items:center;
-  }
-  .status-dot{
-    width:12px;height:12px;border-radius:50%;
-    background:var(--muted); box-shadow: 0 4px 14px rgba(0,0,0,0.4);
-  }
-  .status-text{font-size:14px;color:var(--muted)}
-  .status-ready .status-dot{ background:var(--success)}
-  .status-busy .status-dot{ background:var(--accent)}
-  .status-error .status-dot{ background:var(--danger)}
-
-  .progress-wrap{ margin-top:6px }
-  .progress{
-    width:100%;
-    height:14px;
-    background:rgba(255,255,255,0.04);
-    border-radius:10px;
-    overflow:hidden;
-  }
-  .progress-bar{
-    width:0%;
-    height:100%;
-    background: linear-gradient(90deg, #06b6d4, #14b8a6);
-    transition: width .18s linear;
-  }
-  .percent{ text-align:right; font-size:12px; color:var(--muted); margin-top:6px; }
-
-  .download{
-    display:flex;
-    gap:8px;
-    margin-top:8px;
-    align-items:center;
-  }
-  a.download-btn{
-    display:inline-block;
-    text-decoration:none;
-    padding:9px 12px;
-    border-radius:10px;
-    background:linear-gradient(90deg,#34d399,#10b981);
-    color:#022b30;
-    font-weight:700;
-  }
-
-  .small{font-size:12px;color:var(--muted)}
-  footer{ margin-top:14px; font-size:12px; color:var(--muted) }
-
-  /* micro layout for drop icon */
-  .file-icon{
-    width:56px;height:56px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-    display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);
-    border:1px solid rgba(255,255,255,0.02);
-    flex-shrink:0;
-  }
-</style>
+  <meta charset="UTF-8">
+  <title>Video to MP3 (ffmpeg.wasm)</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    #log { background: #111; color: #0f0; padding: 10px; height: 200px; overflow-y: auto; font-family: monospace; margin-top: 10px; }
+    button { margin-top: 10px; padding: 10px 15px; }
+  </style>
 </head>
 <body>
-  <div class="container" role="main">
-    <div class="left">
-      <div>
-        <h1>Video → MP3</h1>
-        <p class="lead">Drop a video or pick one. Audio will be extracted and offered as <strong>output.mp3</strong>.</p>
-      </div>
+  <h2>V11 Convert Video to MP3 (ffmpeg.wasm)</h2>
+  <input type="file" id="uploader" accept="video/*" />
+  <br><br>
+  <button id="convertBtn">Convert to MP3</button>
+  <a id="downloadLink" style="display:none;" download="output.mp3">Download MP3</a>
 
-      <label class="drop" id="dropZone" tabindex="0">
-        <div class="file-icon">🎞️</div>
-        <div class="file-meta">
-          <div class="file-name" id="fileName">No file selected</div>
-          <div class="file-sub small" id="fileSub">Only video files are accepted (mp4, mov, mkv, webm, etc.)</div>
-        </div>
+  <div id="log"></div>
 
-        <!-- hidden file input -->
-        <input id="uploader" type="file" accept="video/*" aria-label="Choose a video file" />
-      </label>
-
-      <div class="controls">
-        <button class="primary" id="convertBtn" disabled>Convert to MP3</button>
-        <button class="ghost" id="chooseBtn">Choose file</button>
-        <div style="flex:1"></div>
-        <div class="small" id="coreStatus">Loading ffmpeg...</div>
-      </div>
-
-      <footer class="small">Tip: For best performance enable multithread build & host with COOP/COEP (Cloudflare Pages `_headers`).</footer>
-    </div>
-
-    <aside class="right" aria-labelledby="status">
-      <div class="status status-busy" id="statusBox" role="status" aria-live="polite">
-        <div class="status-dot" id="statusDot"></div>
-        <div>
-          <div id="statusTitle" style="font-weight:700;color:#e8f6fb">Initializing</div>
-          <div class="status-text small" id="statusDesc">Preparing ffmpeg runtime…</div>
-        </div>
-      </div>
-
-      <div class="progress-wrap">
-        <div class="progress" aria-hidden="true">
-          <div class="progress-bar" id="progressBar"></div>
-        </div>
-        <div class="percent" id="percentText">0%</div>
-      </div>
-
-      <div class="download" id="downloadArea" style="display:none">
-        <a id="downloadLink" class="download-btn" download="output.mp3">Download output.mp3</a>
-        <div class="small" id="sizeText"></div>
-      </div>
-
-      <div id="message" class="small" style="margin-top:6px;color:var(--muted)"></div>
-    </aside>
-  </div>
-
-  <!-- UMD ffmpeg bundle -->
+  <!-- ffmpeg.wasm UMD build -->
   <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
   <script>
-  (function(){
-    // Grab DOM
-    const uploader = document.getElementById('uploader');
-    const dropZone = document.getElementById('dropZone');
-    const fileNameEl = document.getElementById('fileName');
-    const fileSub = document.getElementById('fileSub');
-    const convertBtn = document.getElementById('convertBtn');
-    const chooseBtn = document.getElementById('chooseBtn');
-    const coreStatus = document.getElementById('coreStatus');
-    const statusTitle = document.getElementById('statusTitle');
-    const statusDesc = document.getElementById('statusDesc');
-    const statusBox = document.getElementById('statusBox');
-    const statusDot = document.getElementById('statusDot');
-    const progressBar = document.getElementById('progressBar');
-    const percentText = document.getElementById('percentText');
-    const downloadArea = document.getElementById('downloadArea');
-    const downloadLink = document.getElementById('downloadLink');
-    const sizeText = document.getElementById('sizeText');
-    const message = document.getElementById('message');
-
-    // FILE state
-    let chosenFile = null;
-    function resetUI(){
-      convertBtn.disabled = true;
-      downloadArea.style.display = 'none';
-      progressBar.style.width = '0%';
-      percentText.textContent = '0%';
-      statusTitle.textContent = 'Initializing';
-      statusDesc.textContent = 'Preparing ffmpeg runtime…';
-      statusBox.className = 'status status-busy';
-      message.textContent = '';
-    }
-    resetUI();
-
-    // Get ffmpeg functions from global (UMD)
     const { createFFmpeg, fetchFile } = FFmpeg;
+    const ffmpeg = createFFmpeg({ log: true });
 
-    // Use multithreaded core if you host with COOP/COEP; else change to non-mt core
-    const ffmpeg = createFFmpeg({
-      log: false,
-      corePath: "https://unpkg.com/@ffmpeg/core-mt@0.11.6/dist/ffmpeg-core.js"
-    });
+    const logElem = document.getElementById("log");
+    const uploader = document.getElementById("uploader");
+    const convertBtn = document.getElementById("convertBtn");
+    const downloadLink = document.getElementById("downloadLink");
 
-    // progress handler
-    ffmpeg.setProgress(({ ratio }) => {
-      const percent = Math.min(100, Math.round(ratio * 100));
-      progressBar.style.width = percent + '%';
-      percentText.textContent = percent + '%';
-      statusTitle.textContent = 'Processing';
-      statusDesc.textContent = `Running ffmpeg — ${percent}%`;
-      statusBox.className = 'status status-busy';
-    });
-
-    // preload on page load
-    window.addEventListener('load', async () => {
-      try {
-        coreStatus.textContent = 'Loading ffmpeg…';
-        statusTitle.textContent = 'Loading';
-        statusDesc.textContent = 'Fetching ffmpeg runtime';
-        await ffmpeg.load(); // loads wasm/core files
-        coreStatus.textContent = 'ffmpeg ready';
-        statusTitle.textContent = 'Ready';
-        statusDesc.textContent = 'Select a video file to convert';
-        statusBox.className = 'status status-ready';
-        convertBtn.disabled = false;
-      } catch (err) {
-        coreStatus.textContent = 'Failed to load ffmpeg';
-        statusTitle.textContent = 'Error';
-        statusDesc.textContent = 'Could not load ffmpeg runtime';
-        statusBox.className = 'status status-error';
-        message.textContent = 'If you are using multithreaded build, ensure COOP/COEP headers are active.';
-        console.error(err); // kept for your debug; remove if you prefer
-      }
-    });
-
-    // file select helpers
-    chooseBtn.addEventListener('click', ()=> uploader.click());
-    uploader.addEventListener('change', (e)=>{
-      const f = e.target.files && e.target.files[0];
-      if(f) setFile(f);
-    });
-
-    // drag&drop
-    dropZone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropZone.classList.add('dragover') });
-    dropZone.addEventListener('dragleave', ()=> dropZone.classList.remove('dragover'));
-    dropZone.addEventListener('drop', (e)=>{
-      e.preventDefault();
-      dropZone.classList.remove('dragover');
-      const f = e.dataTransfer.files && e.dataTransfer.files[0];
-      if(f) {
-        // if not video, reject
-        if(!f.type.startsWith('video/')){
-          message.textContent = 'Please provide a video file.';
-          return;
-        }
-        setFile(f);
-      }
-    });
-
-    function setFile(f){
-      chosenFile = f;
-      fileNameEl.textContent = f.name;
-      fileSub.textContent = `${(f.size/1024/1024).toFixed(2)} MB • ${f.type || 'video'}`;
-      downloadArea.style.display = 'none';
-      progressBar.style.width = '0%';
-      percentText.textContent = '0%';
-      message.textContent = '';
-      convertBtn.disabled = false;
+    function log(msg) {
+      logElem.textContent += msg + "\n";
+      logElem.scrollTop = logElem.scrollHeight;
     }
 
-    // main convert action
-    convertBtn.addEventListener('click', async ()=>{
-      if(!chosenFile){
-        message.textContent = 'No file selected.';
+    ffmpeg.setLogger(({ type, message }) => {
+      log(`[${type}] ${message}`);
+    });
+
+    // 🔥 preload ffmpeg wasm as soon as page is ready
+    window.addEventListener("load", async () => {
+      log("Preloading ffmpeg-core (~32MB)...");
+      await ffmpeg.load();
+      log("✅ ffmpeg-core loaded and ready.");
+    });
+
+    convertBtn.onclick = async () => {
+      if (!uploader.files.length) {
+        alert("Select a video file first");
         return;
       }
-      // disable UI during work
-      convertBtn.disabled = true;
-      chooseBtn.disabled = true;
-      statusTitle.textContent = 'Preparing';
-      statusDesc.textContent = 'Writing file to virtual FS';
-      statusBox.className = 'status status-busy';
+      const file = uploader.files[0];
 
-      try {
-        // ensure wasm loaded
-        if(!ffmpeg.isLoaded()){
-          await ffmpeg.load();
-        }
+      log("Writing file to FS: " + file.name);
+      ffmpeg.FS("writeFile", "input.mp4", await fetchFile(file));
 
-        // derive name
-        const inputName = 'input' + getExtension(chosenFile.name);
-        const outputName = 'output.mp3';
+      log("Extracting audio...");
+      await ffmpeg.run("-i", "input.mp4", "-q:a", "0", "-map", "a", "output.mp3");
 
-        // write file
-        const data = await fetchFile(chosenFile);
-        ffmpeg.FS('writeFile', inputName, data);
+      log("Reading result...");
+      const data = ffmpeg.FS("readFile", "output.mp3");
 
-        // run conversion (extract best audio)
-        statusTitle.textContent = 'Extracting';
-        statusDesc.textContent = 'Running ffmpeg';
-        await ffmpeg.run('-i', inputName, '-q:a', '0', '-map', 'a', outputName);
-
-        // read result
-        const outData = ffmpeg.FS('readFile', outputName);
-        const blob = new Blob([outData.buffer], { type: 'audio/mpeg' });
-        const url = URL.createObjectURL(blob);
-
-        // show download
-        downloadLink.href = url;
-        downloadLink.download = 'output.mp3';
-        sizeText.textContent = `${(blob.size/1024/1024).toFixed(2)} MB`;
-        downloadArea.style.display = 'flex';
-        statusTitle.textContent = 'Done';
-        statusDesc.textContent = 'Conversion complete';
-        statusBox.className = 'status status-ready';
-        message.textContent = '';
-      } catch (err) {
-        statusTitle.textContent = 'Error';
-        statusDesc.textContent = 'Conversion failed';
-        statusBox.className = 'status status-error';
-        message.textContent = 'An error occurred during conversion.';
-        console.error(err);
-      } finally {
-        convertBtn.disabled = false;
-        chooseBtn.disabled = false;
-      }
-    });
-
-    function getExtension(name){
-      const idx = name.lastIndexOf('.');
-      return idx === -1 ? '' : name.slice(idx);
-    }
-
-    // accessibility: keyboard focus triggers file chooser
-    dropZone.addEventListener('keypress', (e) => {
-      if(e.key === 'Enter' || e.key === ' ') uploader.click();
-    });
-
-  })();
+      const url = URL.createObjectURL(new Blob([data.buffer], { type: "audio/mpeg" }));
+      downloadLink.href = url;
+      downloadLink.style.display = "inline-block";
+      log("🎉 Done. Click Download.");
+    };
   </script>
 </body>
 </html>
