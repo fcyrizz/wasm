@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>v8 Video to MP3 Converter (ffmpeg.wasm)</title>
+  <title>Video to MP3 (ffmpeg.wasm)</title>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
     #log { background: #111; color: #0f0; padding: 10px; height: 200px; overflow-y: auto; font-family: monospace; margin-top: 10px; }
@@ -10,7 +10,7 @@
   </style>
 </head>
 <body>
-  <h2>Convert Video to MP3 (ffmpeg.wasm)</h2>
+  <h2>V9 Convert Video to MP3 (ffmpeg.wasm)</h2>
   <input type="file" id="uploader" accept="video/*" />
   <br><br>
   <button id="convertBtn">Convert to MP3</button>
@@ -20,7 +20,7 @@
 
   <script type="module">
     import { createFFmpeg, fetchFile } 
-      from "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js";
+      from "https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js";
 
     const ffmpeg = createFFmpeg({ log: true });
     const logElem = document.getElementById("log");
@@ -32,6 +32,11 @@
       logElem.textContent += msg + "\n";
       logElem.scrollTop = logElem.scrollHeight;
     }
+
+    // attach logger for real-time progress
+    ffmpeg.setLogger(({ type, message }) => {
+      log(`[${type}] ${message}`);
+    });
 
     convertBtn.onclick = async () => {
       if (!uploader.files.length) {
@@ -58,7 +63,7 @@
       const url = URL.createObjectURL(new Blob([data.buffer], { type: "audio/mpeg" }));
       downloadLink.href = url;
       downloadLink.style.display = "inline-block";
-      log("Done. Click Download.");
+      log("✅ Done. Click Download.");
     };
   </script>
 </body>
