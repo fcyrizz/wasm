@@ -2,74 +2,59 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Media to MP3 Converter</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      background: #f9f9f9;
-    }
-    h2 { color: #333; }
-    input[type="file"] { margin: 10px 0; }
-    button {
-      background: #007bff;
-      border: none;
-      padding: 10px 15px;
-      color: #fff;
-      cursor: pointer;
-      border-radius: 4px;
-    }
-    button:disabled { background: #aaa; cursor: not-allowed; }
-    #status { margin-top: 15px; font-weight: bold; }
-  </style>
+  <title>Video to MP3 Converter</title>
 </head>
 <body>
-  <h2>Convert Media to MP3</h2>
-  <input type="file" id="uploader" accept="audio/*,video/*">
-  <br>
-  <button id="convertBtn" disabled>Convert to MP3</button>
-  <div id="status"></div>
+  <h2>Convert Video to MP3</h2>
 
-  <script type="module">
-    import { createFFmpeg, fetchFile } from "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js";
+  <input type="file" id="uploader" accept="video/*">
+  <button id="convertBtn">Convert</button>
+  <p id="status">Status: Idle</p>
+  <a id="downloadLink" style="display:none;" download="output.mp3">Download MP3</a>
 
-    const ffmpeg = createFFmpeg({ log: true });
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg.min.js"></script>
+  <script>
+    const { FFmpeg } = FFmpegWASM; // from CDN bundle
+    const ffmpeg = new FFmpeg();
+
     const uploader = document.getElementById("uploader");
     const convertBtn = document.getElementById("convertBtn");
-    const status = document.getElementById("status");
+    const statusEl = document.getElementById("status");
+    const downloadLink = document.getElementById("downloadLink");
 
-    let file;
+    async function loadFFmpeg() {
+      statusEl.innerText = "Status: Loading ffmpeg...";
+      await ffmpeg.load();
+      statusEl.innerText = "Status: Ready";
+    }
+    loadFFmpeg();
 
-    uploader.addEventListener("change", (e) => {
-      file = e.target.files[0];
-      convertBtn.disabled = !file;
-    });
-
-    convertBtn.addEventListener("click", async () => {
-      if (!file) return;
-
-      status.textContent = "Loading FFmpeg.wasm...";
-      if (!ffmpeg.isLoaded()) {
-        await ffmpeg.load();
+    convertBtn.onclick = async () => {
+      if (!uploader.files.length) {
+        alert("Please select a video first");
+        return;
       }
 
-      status.textContent = "Converting...";
+      const file = uploader.files[0];
       const inputName = file.name;
       const outputName = "output.mp3";
 
-      ffmpeg.FS("writeFile", inputName, await fetchFile(file));
-      await ffmpeg.run("-i", inputName, "-q:a", "0", "-map", "a", outputName);
+      statusEl.innerText = "Status: Writing file...";
+      await ffmpeg.writeFile(inputName, new Uint8Array(await file.arrayBuffer()));
 
-      const data = ffmpeg.FS("readFile", outputName);
-      const url = URL.createObjectURL(new Blob([data.buffer], { type: "audio/mpeg" }));
+      statusEl.innerText = "Status: Converting...";
+      await ffmpeg.exec(["-i", inputName, "-vn", "-ar", "44100", "-ac", "2", "-b:a", "192k", outputName]);
 
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = outputName;
-      link.click();
+      statusEl.innerText = "Status: Fetching output...";
+      const data = await ffmpeg.readFile(outputName);
 
-      status.textContent = "✅ Conversion complete! MP3 downloaded.";
-    });
+      const blob = new Blob([data.buffer], { type: "audio/mpeg" });
+      const url = URL.createObjectURL(blob);
+
+      downloadLink.href = url;
+      downloadLink.style.display = "inline-block";
+      statusEl.innerText = "Status: Done ✅";
+    };
   </script>
 </body>
 </html>
