@@ -8,7 +8,7 @@
   
   <input type="file" id="uploader" />
   <button id="convertBtn" disabled>Convert to MP3</button>
-  <p id="status">No file selected</p>
+  <p id="status">Select a media file to begin.</p>
   <a id="downloadLink" style="display:none;" download="output.mp3">Download MP3</a>
   
   <script type="module">
@@ -23,24 +23,29 @@
 
     uploader.addEventListener('change', (e) => {
       file = e.target.files[0];
-      convertBtn.disabled = !file;
-      status.textContent = file ? `Selected: ${file.name}` : "No file selected";
+      if (file) {
+        convertBtn.disabled = false;
+        status.textContent = `✅ File selected: ${file.name}`;
+      } else {
+        convertBtn.disabled = true;
+        status.textContent = "❌ No file selected";
+      }
     });
 
     convertBtn.addEventListener('click', async () => {
       try {
-        status.textContent = "Loading FFmpeg...";
+        status.textContent = "⏳ Loading FFmpeg...";
         if (!ffmpeg.isLoaded()) {
           await ffmpeg.load();
         }
 
-        status.textContent = "Writing file...";
+        status.textContent = "⏳ Writing file into memory...";
         ffmpeg.FS('writeFile', file.name, await fetchFile(file));
 
-        status.textContent = "Converting to MP3...";
+        status.textContent = "🎵 Converting to MP3...";
         await ffmpeg.run('-i', file.name, 'output.mp3');
 
-        status.textContent = "Reading output...";
+        status.textContent = "📂 Preparing download...";
         const data = ffmpeg.FS('readFile', 'output.mp3');
         const blob = new Blob([data.buffer], { type: 'audio/mpeg' });
         const url = URL.createObjectURL(blob);
@@ -50,7 +55,7 @@
         status.textContent = "✅ Conversion complete! Click download.";
       } catch (err) {
         console.error(err);
-        status.textContent = "❌ Failed: " + err.message;
+        status.textContent = "❌ Conversion failed: " + err.message;
       }
     });
   </script>
