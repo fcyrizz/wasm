@@ -2,7 +2,6 @@
 <html>
 <head>
   <title>Media to MP3 Converter</title>
-  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
 </head>
 <body>
   <h2>Convert media to MP3</h2>
@@ -11,10 +10,10 @@
   <button id="convertBtn" disabled>Convert to MP3</button>
   <a id="downloadLink" style="display:none;" download="output.mp3">Download MP3</a>
   
-  <script>
-    const { createFFmpeg, fetchFile } = FFmpeg;
-    const ffmpeg = createFFmpeg({ log: true });
+  <script type="module">
+    import { createFFmpeg, fetchFile } from "https://cdn.jsdelivr.net/npm/@ffmpeg.wasm/main@0.13.1/+esm";
 
+    const ffmpeg = createFFmpeg({ log: true });
     const uploader = document.getElementById('uploader');
     const convertBtn = document.getElementById('convertBtn');
     const downloadLink = document.getElementById('downloadLink');
@@ -30,13 +29,13 @@
         await ffmpeg.load();
       }
 
-      // Write input file to FFmpeg FS
+      // write file to FS
       ffmpeg.FS('writeFile', file.name, await fetchFile(file));
 
-      // Run FFmpeg command: convert to mp3
+      // convert
       await ffmpeg.run('-i', file.name, 'output.mp3');
 
-      // Read back the result
+      // read result
       const data = ffmpeg.FS('readFile', 'output.mp3');
       const blob = new Blob([data.buffer], { type: 'audio/mpeg' });
       const url = URL.createObjectURL(blob);
