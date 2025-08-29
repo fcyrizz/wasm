@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>MP3 Converter (ffmpeg.wasm)</title>
+  <title>Video to MP3 Converter (ffmpeg.wasm)</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -24,11 +24,11 @@
   </style>
 </head>
 <body>
-  <h2>Convert MP3 (ffmpeg.wasm)</h2>
-  <input type="file" id="uploader" accept="audio/mp3" />
+  <h2>Convert Video to MP3 (ffmpeg.wasm)</h2>
+  <input type="file" id="uploader" accept="video/*" />
   <br><br>
   <button id="convertBtn">Convert to MP3</button>
-  <a id="downloadLink" style="display:none;" download="output.mp3">Download Converted MP3</a>
+  <a id="downloadLink" style="display:none;" download="output.mp3">Download MP3</a>
 
   <div id="log"></div>
 
@@ -48,7 +48,7 @@
 
     convertBtn.onclick = async () => {
       if (!uploader.files.length) {
-        alert("Select an MP3 file first");
+        alert("Select a video file first");
         return;
       }
       const file = uploader.files[0];
@@ -60,11 +60,10 @@
       }
 
       log("Writing file to FS: " + file.name);
-      ffmpeg.FS("writeFile", "input.mp3", await fetchFile(file));
+      ffmpeg.FS("writeFile", "input.mp4", await fetchFile(file));
 
-      log("Running conversion...");
-      // this re-encodes MP3 to MP3
-      await ffmpeg.run("-i", "input.mp3", "-codec:a", "libmp3lame", "output.mp3");
+      log("Extracting audio...");
+      await ffmpeg.run("-i", "input.mp4", "-q:a", "0", "-map", "a", "output.mp3");
 
       log("Reading result...");
       const data = ffmpeg.FS("readFile", "output.mp3");
@@ -72,7 +71,7 @@
       const url = URL.createObjectURL(new Blob([data.buffer], { type: "audio/mpeg" }));
       downloadLink.href = url;
       downloadLink.style.display = "inline-block";
-      log("Conversion done. Click Download.");
+      log("Done. Click Download.");
     };
   </script>
 </body>
