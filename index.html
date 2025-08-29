@@ -8,6 +8,7 @@
   
   <input type="file" id="uploader" />
   <button id="convertBtn" disabled>Convert to MP3</button>
+  <p id="status">No file selected</p>
   <a id="downloadLink" style="display:none;" download="output.mp3">Download MP3</a>
   
   <script type="module">
@@ -17,31 +18,40 @@
     const uploader = document.getElementById('uploader');
     const convertBtn = document.getElementById('convertBtn');
     const downloadLink = document.getElementById('downloadLink');
+    const status = document.getElementById('status');
     let file;
 
     uploader.addEventListener('change', (e) => {
       file = e.target.files[0];
       convertBtn.disabled = !file;
+      status.textContent = file ? `Selected: ${file.name}` : "No file selected";
     });
 
     convertBtn.addEventListener('click', async () => {
-      if (!ffmpeg.isLoaded()) {
-        await ffmpeg.load();
+      try {
+        status.textContent = "Loading FFmpeg...";
+        if (!ffmpeg.isLoaded()) {
+          await ffmpeg.load();
+        }
+
+        status.textContent = "Writing file...";
+        ffmpeg.FS('writeFile', file.name, await fetchFile(file));
+
+        status.textContent = "Converting to MP3...";
+        await ffmpeg.run('-i', file.name, 'output.mp3');
+
+        status.textContent = "Reading output...";
+        const data = ffmpeg.FS('readFile', 'output.mp3');
+        const blob = new Blob([data.buffer], { type: 'audio/mpeg' });
+        const url = URL.createObjectURL(blob);
+
+        downloadLink.href = url;
+        downloadLink.style.display = 'inline-block';
+        status.textContent = "✅ Conversion complete! Click download.";
+      } catch (err) {
+        console.error(err);
+        status.textContent = "❌ Failed: " + err.message;
       }
-
-      // write file to FS
-      ffmpeg.FS('writeFile', file.name, await fetchFile(file));
-
-      // convert
-      await ffmpeg.run('-i', file.name, 'output.mp3');
-
-      // read result
-      const data = ffmpeg.FS('readFile', 'output.mp3');
-      const blob = new Blob([data.buffer], { type: 'audio/mpeg' });
-      const url = URL.createObjectURL(blob);
-
-      downloadLink.href = url;
-      downloadLink.style.display = 'inline-block';
     });
   </script>
 </body>
