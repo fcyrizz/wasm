@@ -36,10 +36,12 @@
       coreURL: "https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg-core.js",
       wasmURL: "https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg-core.wasm",
       workerURL: "https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg-core.worker.js",
-      logger: ({ type, message }) => {
-        logsEl.textContent += `[${type}] ${message}\n`;
-        logsEl.scrollTop = logsEl.scrollHeight;
-      }
+    });
+
+    // ✅ Attach logger AFTER creating ffmpeg
+    ffmpeg.on("log", ({ type, message }) => {
+      logsEl.textContent += `[${type}] ${message}\n`;
+      logsEl.scrollTop = logsEl.scrollHeight;
     });
 
     const uploader = document.getElementById("uploader");
@@ -70,10 +72,10 @@
       statusEl.innerText = "Status: Converting...";
       await ffmpeg.exec([
         "-i", inputName,
-        "-vn",                // no video
-        "-ar", "44100",       // sample rate
-        "-ac", "2",           // stereo
-        "-b:a", "192k",       // bitrate
+        "-vn",
+        "-ar", "44100",
+        "-ac", "2",
+        "-b:a", "192k",
         outputName
       ]);
 
