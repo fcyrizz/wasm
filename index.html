@@ -2,69 +2,166 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Video to MP3 (ffmpeg.wasm)</title>
+  <title>Video to MP3 Converter</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    #log { background: #111; color: #0f0; padding: 10px; height: 200px; overflow-y: auto; font-family: monospace; margin-top: 10px; }
-    button { margin-top: 10px; padding: 10px 15px; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      color: white;
+    }
+    h1 {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 20px;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    input[type="file"] {
+      display: none;
+    }
+    label {
+      display: inline-block;
+      padding: 12px 20px;
+      background: #ff9800;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 15px;
+      transition: 0.3s;
+    }
+    label:hover {
+      background: #e68900;
+    }
+    button {
+      padding: 12px 20px;
+      background: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: 0.3s;
+    }
+    button:disabled {
+      background: #777;
+      cursor: not-allowed;
+    }
+    button:hover:not(:disabled) {
+      background: #43a047;
+    }
+    .progress-container {
+      margin: 20px 0;
+      width: 100%;
+      background: rgba(255,255,255,0.2);
+      border-radius: 10px;
+      overflow: hidden;
+      height: 20px;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: #ff9800;
+      transition: width 0.2s;
+    }
+    a.download {
+      display: none;
+      margin-top: 15px;
+      padding: 12px 20px;
+      background: #2196f3;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: bold;
+    }
+    a.download:hover {
+      background: #1976d2;
+    }
+    @media (max-width: 600px) {
+      h1 { font-size: 1.5rem; }
+      .card { padding: 15px; }
+    }
   </style>
 </head>
 <body>
-  <h2>V11 Convert Video to MP3 (ffmpeg.wasm)</h2>
-  <input type="file" id="uploader" accept="video/*" />
-  <br><br>
-  <button id="convertBtn">Convert to MP3</button>
-  <a id="downloadLink" style="display:none;" download="output.mp3">Download MP3</a>
+  <h1>🎵 Video to MP3 Converter</h1>
+  <div class="card">
+    <input type="file" id="uploader" accept="video/*" />
+    <label for="uploader">Choose Video</label>
+    <br>
+    <button id="convertBtn" disabled>Convert to MP3</button>
 
-  <div id="log"></div>
+    <div class="progress-container">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
 
-  <!-- ffmpeg.wasm UMD build -->
+    <a id="downloadLink" class="download" download="output.mp3">⬇️ Download MP3</a>
+  </div>
+
+  <!-- ffmpeg wasm -->
   <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
   <script>
     const { createFFmpeg, fetchFile } = FFmpeg;
-    const ffmpeg = createFFmpeg({ log: true });
-
-    const logElem = document.getElementById("log");
-    const uploader = document.getElementById("uploader");
-    const convertBtn = document.getElementById("convertBtn");
-    const downloadLink = document.getElementById("downloadLink");
-
-    function log(msg) {
-      logElem.textContent += msg + "\n";
-      logElem.scrollTop = logElem.scrollHeight;
-    }
-
-    ffmpeg.setLogger(({ type, message }) => {
-      log(`[${type}] ${message}`);
+    const ffmpeg = createFFmpeg({
+      log: false,
+      corePath: "https://unpkg.com/@ffmpeg/core-mt@0.11.6/dist/ffmpeg-core.js"
     });
 
-    // 🔥 preload ffmpeg wasm as soon as page is ready
+    const uploader = document.getElementById("uploader");
+    const convertBtn = document.getElementById("convertBtn");
+    const progressBar = document.getElementById("progressBar");
+    const downloadLink = document.getElementById("downloadLink");
+
+    let selectedFile = null;
+
+    // preload ffmpeg on page load
     window.addEventListener("load", async () => {
-      log("Preloading ffmpeg-core (~32MB)...");
       await ffmpeg.load();
-      log("✅ ffmpeg-core loaded and ready.");
+      console.log("FFmpeg loaded");
+    });
+
+    uploader.onchange = (e) => {
+      if (e.target.files.length > 0) {
+        selectedFile = e.target.files[0];
+        convertBtn.disabled = false;
+      }
+    };
+
+    // progress handler
+    ffmpeg.setProgress(({ ratio }) => {
+      progressBar.style.width = Math.min(100, ratio * 100) + "%";
     });
 
     convertBtn.onclick = async () => {
-      if (!uploader.files.length) {
-        alert("Select a video file first");
-        return;
-      }
-      const file = uploader.files[0];
+      if (!selectedFile) return;
 
-      log("Writing file to FS: " + file.name);
-      ffmpeg.FS("writeFile", "input.mp4", await fetchFile(file));
+      convertBtn.disabled = true;
+      progressBar.style.width = "0%";
+      downloadLink.style.display = "none";
 
-      log("Extracting audio...");
+      ffmpeg.FS("writeFile", "input.mp4", await fetchFile(selectedFile));
       await ffmpeg.run("-i", "input.mp4", "-q:a", "0", "-map", "a", "output.mp3");
-
-      log("Reading result...");
       const data = ffmpeg.FS("readFile", "output.mp3");
 
       const url = URL.createObjectURL(new Blob([data.buffer], { type: "audio/mpeg" }));
       downloadLink.href = url;
       downloadLink.style.display = "inline-block";
-      log("🎉 Done. Click Download.");
+
+      convertBtn.disabled = false;
     };
   </script>
 </body>
