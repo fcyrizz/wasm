@@ -14,8 +14,14 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg.min.js"></script>
   <script>
-    const { FFmpeg } = FFmpegWASM; // from CDN bundle
-    const ffmpeg = new FFmpeg();
+    const { FFmpeg } = FFmpegWASM;
+
+    // ✅ Tell ffmpeg where to fetch wasm/worker from
+    const ffmpeg = new FFmpeg({
+      coreURL: "https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg-core.js",
+      wasmURL: "https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg-core.wasm",
+      workerURL: "https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg-core.worker.js",
+    });
 
     const uploader = document.getElementById("uploader");
     const convertBtn = document.getElementById("convertBtn");
